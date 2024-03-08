@@ -1,95 +1,316 @@
-import tkinter as tk
-from tkinter import ttk
-from tkinter import messagebox as mb
-import matplotlib.pyplot as plt
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import tkinter as tk
+from tkinter import filedialog
 
-# Obtención de los datos del archivo de entradas
-try:
-    with open("entradas.csv", "r") as file:
-        lines = file.readlines()
-        entradas = []
-        for line in lines:
-            x, y = map(float, line.strip().split(","))
-            entradas.append((x, y))
-        x_entradas = np.array([i for i in entradas])
-except FileNotFoundError:
-    print("Archivo de entradas no encontrado.")
+paused = False
 
-# Obtención de los datos del archivo de salidas
-try:
-    with open("salidas.csv", "r") as file:
-        lines = file.readlines()
-        y_salidas = [float(line.strip()) for line in lines]
-except FileNotFoundError:
-    print("Archivo de salidas no encontrado.")
+class Perceptron:
+    def __init__(self, input_size, learning_rate=0.1, epochs=100):
+        self.weights = np.random.rand(input_size + 1)
+        self.learning_rate = learning_rate
+        self.epochs = epochs
+        
+
+    def predict(self, inputs):
+        summation = np.dot(inputs, self.weights[1:]) + self.weights[0]
+        return 1 if summation > 0 else 0
+
+    def train(self, training_inputs, labels):
+        
+        errors = []
+        for epoch in range(1, self.epochs + 1):
+            while paused:  # Mientras esté pausado, esperar
+                root.update()
+            total_error = 0
+            for inputs, label in zip(training_inputs, labels):
+                prediction = self.predict(inputs)
+                error = label - prediction
+                total_error += error ** 2
+                self.weights[1:] += self.learning_rate * error * inputs
+                self.weights[0] += self.learning_rate * error
+            errors.append(total_error)
+            plot_decision_boundary()
+            root.update()
+            predictions = [self.predict(inputs) for inputs in training_inputs]  # Predicciones
+            accuracy = calculate_accuracy(predictions, labels)  # Calcular precisión
+            confusion_matrix = calculate_confusion_matrix(predictions, labels)
+            f1_score = calculate_f1_score(confusion_matrix)
+            update_results(epoch, accuracy, confusion_matrix, f1_score)
+            if accuracy == 1 and f1_score == 1:
+                break
+        return errors
 
 
-def mostrar_grafica_inicial():
-    pass
+def load_data():
+    global training_data, labels, title, perceptron, predictions
+    filename = filedialog.askopenfilename(filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
+    with open(filename, 'r') as file:
+        title = file.readline().strip()
+    raw_data = np.loadtxt(filename, skiprows=1, dtype=str)
+    training_data = raw_data[:, :2].astype(float)
+    labels = raw_data[:, 2] == 'R'
+    labels = labels.astype(int)
+    plot_data(title, training_data, labels)
+    perceptron = Perceptron(2)
+    predictions = []
+    train_button.config(state=tk.NORMAL)
 
-def entrenar_Adaline_para_clasificacion():
-    pass
+def train_perceptron():
+    global perceptron, predictions
+    bias_value = float(bias_entry.get())
+    weight1_value = float(weight1_entry.get())
+    weight2_value = float(weight2_entry.get())
+    learning_rate = float(learning_rate_entry.get())
+    epochs = int(epochs_entry.get())
 
-def entrenar_Adaline_para_regresion():
-    pass
+    perceptron = Perceptron(2, learning_rate, epochs)
+    perceptron.weights[0] = bias_value
+    perceptron.weights[1] = weight1_value
+    perceptron.weights[2] = weight2_value
 
+    errors = perceptron.train(training_data, labels)
 
-# Configuración de la interfaz gráfica
-interfaz_inicial = tk.Tk()
-interfaz_inicial.geometry("320x370")
-interfaz_inicial.title("Adaline")
+    #accuracy, confusion_matrix, f1_score = evaluate_perceptron(perceptron, training_data, labels)
+    #update_results(epochs, accuracy, confusion_matrix, f1_score)
 
-peso1_label = ttk.Label(interfaz_inicial, width=30, text="Peso 1:")
-peso1_label.grid(row=0, column=0)
-peso1_entry = ttk.Entry(interfaz_inicial)
-peso1_entry.grid(row=0, column=1)
+def evaluate_perceptron(perceptron, training_data, labels):
+    predictions = [perceptron.predict(inputs) for inputs in training_data]
+    accuracy = calculate_accuracy(predictions, labels)
+    confusion_matrix = calculate_confusion_matrix(predictions, labels)
+    f1_score = calculate_f1_score(confusion_matrix)
+    return accuracy, confusion_matrix, f1_score
 
-peso2_label = ttk.Label(interfaz_inicial, width=30, text="Peso 2:")
-peso2_label.grid(row=1, column=0)
-peso2_entry = ttk.Entry(interfaz_inicial)
-peso2_entry.grid(row=1, column=1)
+def calculate_accuracy(predictions, labels):
+    correct_predictions = sum(1 for pred, label in zip(predictions, labels) if pred == label)
+    return correct_predictions / len(labels)
 
-bias_label = ttk.Label(interfaz_inicial, width=30, text="Bias:")
-bias_label.grid(row=2, column=0)
-bias_entry = ttk.Entry(interfaz_inicial)
-bias_entry.grid(row=2, column=1)
+def calculate_confusion_matrix(predictions, labels):
+    true_positives = sum(1 for pred, label in zip(predictions, labels) if pred == label and pred == 1)
+    false_positives = sum(1 for pred, label in zip(predictions, labels) if pred == 1 and label == 0)
+    true_negatives = sum(1 for pred, label in zip(predictions, labels) if pred == label and pred == 0)
+    false_negatives = sum(1 for pred, label in zip(predictions, labels) if pred == 0 and label == 1)
+    return [[true_positives, false_positives], [false_negatives, true_negatives]]
 
-learning_rate_label = ttk.Label(interfaz_inicial, width=30, text="Parámetro de aprendizaje:")
-learning_rate_label.grid(row=3, column=0)
-learning_rate_entry = ttk.Entry(interfaz_inicial)
-learning_rate_entry.grid(row=3, column=1)
-learning_rate_entry.insert(tk.END, "0.01")
+def calculate_f1_score(confusion_matrix):
+    true_positives, false_positives, false_negatives = confusion_matrix[0][0], confusion_matrix[0][1], confusion_matrix[1][0]
+    
+    if true_positives + false_positives == 0:
+        precision = 0
+    else:
+        precision = true_positives / (true_positives + false_positives)
+    
+    recall = true_positives / (true_positives + false_negatives)
+    
+    if precision == 0 or recall == 0:
+        return 0
+    
+    f1_score = 2 * (precision * recall) / (precision + recall)
+    return f1_score
 
-epochs_label = ttk.Label(interfaz_inicial, width=30, text="Épocas:")
-epochs_label.grid(row=4, column=0)
-epochs_entry = ttk.Entry(interfaz_inicial)
-epochs_entry.grid(row=4, column=1)
-epochs_entry.insert(tk.END, "100")
+def update_results(epoch, accuracy, confusion_matrix, f1_score):
+    epoch_label.config(text=f"Epoch Actual: {epoch}")
+    accuracy_label.config(text=f"Precisión: {accuracy}")
+    confusion_matrix_label.config(text=f"Matriz de Confusión: {confusion_matrix}")
+    rounded_f1_score = round(f1_score, 4)
+    f1_score_label.config(text=f"Puntuación F1: {rounded_f1_score}")
 
-error_objetivo_label = ttk.Label(interfaz_inicial, width=30, text="Error objetivo:")
-error_objetivo_label.grid(row=5, column=0)
-error_objetivo_entry = ttk.Entry(interfaz_inicial)
-error_objetivo_entry.grid(row=5, column=1)
-error_objetivo_entry.insert(tk.END, "0.01")
+def clear_data():
+    global perceptron, predictions
+    ax.clear()
+    ax.grid(True)
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 1.5)
+    canvas.draw()
+    perceptron = None
+    predictions = []
+    train_button.config(state=tk.DISABLED)
+    epoch_label.config(text="Epoch Actual: ")
 
-# Etiquetas para mostrar precisión, matriz de confusión y F1 Score
-precision_label = ttk.Label(interfaz_inicial, text="Precisión: ")
-precision_label.grid(row=9, columnspan=2)
+def fill_random():
+    bias_entry.delete(0, tk.END)
+    weight1_entry.delete(0, tk.END)
+    weight2_entry.delete(0, tk.END)
+    learning_rate_entry.delete(0, tk.END)
+    epochs_entry.delete(0, tk.END)
 
-matriz_confusion_label = ttk.Label(interfaz_inicial, text="Matriz de confusión:\n")
-matriz_confusion_label.grid(row=10, columnspan=2)
+    bias_value = np.random.uniform(-1, 1)
+    weight1_value = np.random.uniform(-1, 1)
+    weight2_value = np.random.uniform(-1, 1)
 
-f1_score_label = ttk.Label(interfaz_inicial, text="F1 Score: ")
-f1_score_label.grid(row=11, columnspan=2)
+    bias_entry.insert(0, str(round(bias_value, 2)))
+    weight1_entry.insert(0, str(round(weight1_value, 2)))
+    weight2_entry.insert(0, str(round(weight2_value, 2)))
+    learning_rate_entry.insert(0, str(0.01))
+    epochs_entry.insert(0, str(50))
 
-mostrar_grafica_button = ttk.Button(interfaz_inicial, text="Mostrar gráfica inicial", command=mostrar_grafica_inicial)
-mostrar_grafica_button.grid(row=6, columnspan=2)
+def pause_training():
+    global paused
+    if paused == False :
+        pause_button.config(text="Reanudar")
+        paused = True
+    else:
+        pause_button.config(text="Pausar")
+        paused = False  # Establecer la señal de pausa
+        
+        
+    
 
-entrenar_clasificacion_button = ttk.Button(interfaz_inicial, text="Entrenar para clasificacion", command=entrenar_Adaline_para_clasificacion)
-entrenar_clasificacion_button.grid(row=7, columnspan=2)
+def plot_data(title, training_inputs, labels):
+    ax.clear()
+    ax.grid(True)
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 1.5)
 
-entrenar_regresion_button = ttk.Button(interfaz_inicial, text="Entrenar para regresión", command=entrenar_Adaline_para_regresion)
-entrenar_regresion_button.grid(row=8, columnspan=2)
+    black_points = False
+    red_points = False
 
-interfaz_inicial.mainloop()
+    for i, inputs in enumerate(training_inputs):
+        color = 'r' if labels[i] else 'k'
+        if labels[i]:
+            if not red_points:
+                ax.scatter(inputs[0], inputs[1], c=color, label='True')
+                red_points = True
+            else:
+                ax.scatter(inputs[0], inputs[1], c=color)
+        else:
+            if not black_points:
+                ax.scatter(inputs[0], inputs[1], c=color, label='False')
+                black_points = True
+            else:
+                ax.scatter(inputs[0], inputs[1], c=color)
+
+    ax.set_xlabel('Input 1')
+    ax.set_ylabel('Input 2')
+    ax.set_title(title)
+    ax.legend()
+
+    canvas.draw()
+
+def plot_decision_boundary():
+    ax.clear()
+    ax.grid(True)
+    ax.set_xlim(-1.5, 1.5)
+    ax.set_ylim(-1.5, 1.5)
+
+    black_points = False
+    red_points = False
+
+    for i, inputs in enumerate(training_data):
+        color = 'r' if labels[i] else 'k'
+        if labels[i]:
+            if not red_points:
+                ax.scatter(inputs[0], inputs[1], c=color, label='True')
+                red_points = True
+            else:
+                ax.scatter(inputs[0], inputs[1], c=color)
+        else:
+            if not black_points:
+                ax.scatter(inputs[0], inputs[1], c=color, label='False')
+                black_points = True
+            else:
+                ax.scatter(inputs[0], inputs[1], c=color)
+
+    if perceptron is not None and perceptron.weights[1] != 0:
+        x_values = np.linspace(-2, 2, 100)
+        y_values = -(perceptron.weights[0] + perceptron.weights[1] * x_values) / perceptron.weights[2]
+        ax.plot(x_values, y_values, label='Línea de decisión')
+    elif perceptron is not None:
+        ax.axvline(x=-perceptron.weights[0] / perceptron.weights[1], color='g', linestyle='--', label='Línea de decisión')
+
+    ax.set_xlabel('Input 1')
+    ax.set_ylabel('Input 2')
+    ax.set_title(title)
+    ax.legend()
+
+    canvas.draw()
+
+# Interfaz
+root = tk.Tk()
+root.title("Perceptrón")
+root.geometry("1000x550") 
+
+# Frame del grid
+grid_frame = tk.Frame(root)
+grid_frame.grid(row=0, column=0, padx=10, pady=10)
+grid_frame.grid_rowconfigure(0, weight=1)
+grid_frame.grid_columnconfigure(0, weight=1)
+
+fig, ax = plt.subplots()
+ax.grid(True)
+ax.set_xlim(-1.5, 1.5)
+ax.set_ylim(-1.5, 1.5)
+canvas = FigureCanvasTkAgg(fig, master=grid_frame)
+canvas_widget = canvas.get_tk_widget()
+canvas_widget.grid(row=0, column=0, sticky="nsew")
+
+# Frame de los datos
+data_frame = tk.Frame(root)
+data_frame.grid(row=0, column=1, padx=10, pady=10, sticky="n")
+
+# Frame de los botones
+button_frame = tk.Frame(root)
+button_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
+
+# Botones
+load_button = tk.Button(button_frame, text="Cargar Datos", command=load_data)
+load_button.grid(row=0, column=0, padx=5)
+
+train_button = tk.Button(button_frame, text="Entrenar", command=train_perceptron, state=tk.DISABLED)
+train_button.grid(row=0, column=1, padx=5)
+
+clear_button = tk.Button(button_frame, text="Limpiar", command=clear_data)
+clear_button.grid(row=0, column=2, padx=5)
+
+fill_button = tk.Button(button_frame, text="Llenar Aleatorio", command=fill_random)
+fill_button.grid(row=0, column=3, padx=5)
+
+pause_button = tk.Button(button_frame, text="Pausar", command=pause_training)
+pause_button.grid(row=0, column=4, padx=5)
+
+# Entradas para bias y pesos
+bias_label = tk.Label(data_frame, text="Bias:")
+bias_label.grid(row=0, column=0, padx=5, pady=5)
+
+bias_entry = tk.Entry(data_frame)
+bias_entry.grid(row=0, column=1, padx=5, pady=5)
+
+weight1_label = tk.Label(data_frame, text="Peso 1:")
+weight1_label.grid(row=1, column=0, padx=5, pady=5)
+
+weight1_entry = tk.Entry(data_frame)
+weight1_entry.grid(row=1, column=1, padx=5, pady=5)
+
+weight2_label = tk.Label(data_frame, text="Peso 2:")
+weight2_label.grid(row=2, column=0, padx=5, pady=5)
+
+weight2_entry = tk.Entry(data_frame)
+weight2_entry.grid(row=2, column=1, padx=5, pady=5)
+
+learning_rate_label = tk.Label(data_frame, text="Tasa de Aprendizaje:")
+learning_rate_label.grid(row=3, column=0, padx=5, pady=5)
+
+learning_rate_entry = tk.Entry(data_frame)
+learning_rate_entry.grid(row=3, column=1, padx=5, pady=5)
+
+epochs_label = tk.Label(data_frame, text="Épocas:")
+epochs_label.grid(row=4, column=0, padx=5, pady=5)
+
+epochs_entry = tk.Entry(data_frame)
+epochs_entry.grid(row=4, column=1, padx=5, pady=5)
+
+# Resultados
+epoch_label = tk.Label(data_frame, text="Epoca Actual: ")
+epoch_label.grid(row=5, column=0, padx=5, pady=5)
+
+accuracy_label = tk.Label(data_frame, text="Accuracy: ")
+accuracy_label.grid(row=6, column=0, padx=5, pady=5)
+
+confusion_matrix_label = tk.Label(data_frame, text="Confusion Matrix: ")
+confusion_matrix_label.grid(row=7, column=0, padx=5, pady=5)
+
+f1_score_label = tk.Label(data_frame, text="F1 Score: ")
+f1_score_label.grid(row=8, column=0, padx=5, pady=5)
+
+root.mainloop()
