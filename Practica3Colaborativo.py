@@ -314,5 +314,5 @@ f1_score_label = tk.Label(data_frame, text="F1 Score: ")
 f1_score_label.grid(row=8, column=0, padx=5, pady=5)
 
 root.mainloop()
-root.mainloop()
+
 
