@@ -6,11 +6,13 @@ from tkinter import filedialog
 
 paused = False
 
-class Perceptron:
-    def __init__(self, input_size, learning_rate=0.1, epochs=100):
+# Cambio del nombre de la clase: Adaline
+class Adaline:
+    def __init__(self, input_size, learning_rate=0.1, epochs=100, tgt_error=0.01):
         self.weights = np.random.rand(input_size + 1)
         self.learning_rate = learning_rate
         self.epochs = epochs
+        self.target_error = tgt_error # Nuevo atributo: error objetivo
         
 
     def predict(self, inputs):
@@ -44,7 +46,7 @@ class Perceptron:
 
 
 def load_data():
-    global training_data, labels, title, perceptron, predictions
+    global training_data, labels, title, adaline, predictions
     filename = filedialog.askopenfilename(filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
     with open(filename, 'r') as file:
         title = file.readline().strip()
@@ -53,24 +55,25 @@ def load_data():
     labels = raw_data[:, 2] == 'R'
     labels = labels.astype(int)
     plot_data(title, training_data, labels)
-    perceptron = Perceptron(2)
+    adaline = Adaline(2)
     predictions = []
     train_button.config(state=tk.NORMAL)
 
 def train_perceptron():
-    global perceptron, predictions
+    global adaline, predictions
     bias_value = float(bias_entry.get())
     weight1_value = float(weight1_entry.get())
     weight2_value = float(weight2_entry.get())
     learning_rate = float(learning_rate_entry.get())
     epochs = int(epochs_entry.get())
+    tgt_error = float(target_error_entry.get())
 
-    perceptron = Perceptron(2, learning_rate, epochs)
-    perceptron.weights[0] = bias_value
-    perceptron.weights[1] = weight1_value
-    perceptron.weights[2] = weight2_value
+    adaline = Adaline(2, learning_rate, epochs, tgt_error)
+    adaline.weights[0] = bias_value
+    adaline.weights[1] = weight1_value
+    adaline.weights[2] = weight2_value
 
-    errors = perceptron.train(training_data, labels)
+    errors = adaline.train(training_data, labels)
 
     #accuracy, confusion_matrix, f1_score = evaluate_perceptron(perceptron, training_data, labels)
     #update_results(epochs, accuracy, confusion_matrix, f1_score)
@@ -117,13 +120,13 @@ def update_results(epoch, accuracy, confusion_matrix, f1_score):
     f1_score_label.config(text=f"Puntuación F1: {rounded_f1_score}")
 
 def clear_data():
-    global perceptron, predictions
+    global adaline, predictions
     ax.clear()
     ax.grid(True)
     ax.set_xlim(-1.5, 1.5)
     ax.set_ylim(-1.5, 1.5)
     canvas.draw()
-    perceptron = None
+    adaline = None
     predictions = []
     train_button.config(state=tk.DISABLED)
     epoch_label.config(text="Epoch Actual: ")
@@ -212,12 +215,12 @@ def plot_decision_boundary():
             else:
                 ax.scatter(inputs[0], inputs[1], c=color)
 
-    if perceptron is not None and perceptron.weights[1] != 0:
+    if adaline is not None and adaline.weights[1] != 0:
         x_values = np.linspace(-2, 2, 100)
-        y_values = -(perceptron.weights[0] + perceptron.weights[1] * x_values) / perceptron.weights[2]
+        y_values = -(adaline.weights[0] + adaline.weights[1] * x_values) / adaline.weights[2]
         ax.plot(x_values, y_values, label='Línea de decisión')
-    elif perceptron is not None:
-        ax.axvline(x=-perceptron.weights[0] / perceptron.weights[1], color='g', linestyle='--', label='Línea de decisión')
+    elif adaline is not None:
+        ax.axvline(x=-adaline.weights[0] / adaline.weights[1], color='g', linestyle='--', label='Línea de decisión')
 
     ax.set_xlabel('Input 1')
     ax.set_ylabel('Input 2')
@@ -299,6 +302,14 @@ epochs_label.grid(row=4, column=0, padx=5, pady=5)
 
 epochs_entry = tk.Entry(data_frame)
 epochs_entry.grid(row=4, column=1, padx=5, pady=5)
+
+# Nueva etiqueta: Error objetivo
+
+target_error_label = tk.Label(data_frame, text="Error objetivo:")
+target_error_label.grid(row=5, column=0, padx=5, pady=5)
+
+target_error_entry = tk.Entry(data_frame)
+target_error_entry.grid(row=5, column=1, padx=5, pady=5)
 
 # Resultados
 epoch_label = tk.Label(data_frame, text="Epoca Actual: ")
