@@ -313,16 +313,16 @@ target_error_entry.grid(row=5, column=1, padx=5, pady=5)
 
 # Resultados
 epoch_label = tk.Label(data_frame, text="Epoca Actual: ")
-epoch_label.grid(row=5, column=0, padx=5, pady=5)
+epoch_label.grid(row=6, column=0, padx=5, pady=5)
 
 accuracy_label = tk.Label(data_frame, text="Accuracy: ")
-accuracy_label.grid(row=6, column=0, padx=5, pady=5)
+accuracy_label.grid(row=7, column=0, padx=5, pady=5)
 
 confusion_matrix_label = tk.Label(data_frame, text="Confusion Matrix: ")
-confusion_matrix_label.grid(row=7, column=0, padx=5, pady=5)
+confusion_matrix_label.grid(row=8, column=0, padx=5, pady=5)
 
 f1_score_label = tk.Label(data_frame, text="F1 Score: ")
-f1_score_label.grid(row=8, column=0, padx=5, pady=5)
+f1_score_label.grid(row=9, column=0, padx=5, pady=5)
 
 root.mainloop()
 
