@@ -315,6 +315,5 @@ f1_score_label.grid(row=8, column=0, padx=5, pady=5)
 
 root.mainloop()
 
-print("prueba")
 
 
