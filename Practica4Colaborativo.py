@@ -14,6 +14,7 @@
 
 # Se puede utilizar un archivo de dos entradas.
 
+
 # El archivo de salidas puede tener varias columnas. Estas columnas indican las salidas de cada neurona.
 
 # Cada neurona es independiente, pero no es la mejor forma. El algoritmo de entrenamiento aplica para todas las neuronas simultáneamente. Cada uno de los pasos del entrenamiento aplica para cada una de las neuronas de la red.
