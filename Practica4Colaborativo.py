@@ -26,6 +26,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import filedialog
 
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
 paused = False
 
 
@@ -102,7 +105,19 @@ def train_adaline():
 
     errors = adaline.train(training_data, labels)
 
-    # Plot results or update GUI with training information
+    # Obtener predicciones finales
+    predictions = [1 if adaline.predict(inputs) > 0 else 0 for inputs in training_data]
+    # Calcular matriz de confusión
+    cm = confusion_matrix(labels, predictions)
+    print("Matriz de Confusión:")
+    print(cm)
+    # Visualizar la matriz de confusión
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, cmap='Blues', fmt='g', xticklabels=['0', '1'], yticklabels=['0', '1'])
+    plt.xlabel('Predicción')
+    plt.ylabel('Valor Real')
+    plt.title('Matriz de Confusión')
+    plt.show()
 
 
 def plot_data(title, training_inputs, labels):
