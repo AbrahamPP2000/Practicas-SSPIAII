@@ -28,56 +28,65 @@ from tkinter import filedialog
 
 paused = False
 
-
 class Adaline:
-    def __init__(self, input_size, hidden_size=4, learning_rate=0.01, epochs=100):
-        self.weights_input_hidden = np.random.rand(input_size, hidden_size)
-        self.bias_hidden = np.random.rand(hidden_size)
-        self.weights_hidden_output = np.random.rand(hidden_size, 1)  # Corrección en la forma de los pesos
-        self.bias_output = np.random.rand(1)
+    def __init__(self, input_size, hidden_size=10, learning_rate=0.01, epochs=100, regularization=None, initial_weights=None):
+        if initial_weights is not None:
+            self.weights_input_hidden = initial_weights['weights_input_hidden']
+            self.bias_hidden = initial_weights['bias_hidden']
+            self.weights_hidden_output = initial_weights['weights_hidden_output']
+            self.bias_output = initial_weights['bias_output']
+        else:
+            self.weights_input_hidden = np.random.randn(input_size, hidden_size)
+            self.bias_hidden = np.random.randn(hidden_size)
+            self.weights_hidden_output = np.random.randn(hidden_size, 1)
+            self.bias_output = np.random.randn(1)
         self.learning_rate = learning_rate
         self.epochs = epochs
+        self.regularization = regularization
+        self.errors = []
 
     def tanh(self, x):
         return np.tanh(x)
 
     def tanh_derivative(self, x):
-        return 1.0 - np.tanh(x) ** 2
+        return 1.0 - np.tanh(x)**2
 
     def predict(self, inputs):
         hidden_input = np.dot(inputs, self.weights_input_hidden) + self.bias_hidden
         self.hidden_outputs = self.tanh(hidden_input)
         output = np.dot(self.hidden_outputs, self.weights_hidden_output) + self.bias_output
-        return output.item()  # Convertir el array a un escalar antes de devolverlo
+        return output.item()
 
     def train(self, training_inputs, labels):
-        errors = []
         for epoch in range(1, self.epochs + 1):
-            while paused:  # Mientras esté pausado, esperar
+            while paused:
                 root.update()
             total_error = 0
             for inputs, label in zip(training_inputs, labels):
                 output = self.predict(inputs)
                 output_error = label - output
                 total_error += output_error ** 2
-                output_delta = output_error * self.tanh_derivative(output)  # Derivada de la función de activación tanh
-                output_delta_reshaped = output_delta.reshape(-1, 1)  # Convertir a matriz de (4,1)
-                hidden_error = np.dot(output_delta_reshaped.T,
-                                      self.weights_hidden_output.T)  # Ajuste en la multiplicación
-                hidden_delta = hidden_error * self.tanh_derivative(
-                    self.hidden_outputs)  # Derivada de la función de activación tanh
+                output_delta = output_error * self.tanh_derivative(output)
+                output_delta_reshaped = output_delta.reshape(-1, 1)
+                hidden_error = np.dot(output_delta_reshaped.T, self.weights_hidden_output.T)
+                hidden_delta = hidden_error * self.tanh_derivative(self.hidden_outputs)
                 self.weights_hidden_output += self.learning_rate * np.outer(self.hidden_outputs, output_delta)
                 self.weights_input_hidden += self.learning_rate * np.outer(inputs, hidden_delta)
-                self.bias_hidden += self.learning_rate * hidden_delta.squeeze()  # Ajuste para eliminar la dimensión adicional
-                self.bias_output += self.learning_rate * output_delta.squeeze()  # Ajuste para eliminar la dimensión adicional
-            errors.append(total_error)
+                self.bias_hidden += self.learning_rate * hidden_delta.squeeze()
+                self.bias_output += self.learning_rate * output_delta.squeeze()
+            
+            if self.regularization == 'L2':
+                self.weights_hidden_output -= self.learning_rate * 0.01 * self.weights_hidden_output
+                self.weights_input_hidden -= self.learning_rate * 0.01 * self.weights_input_hidden
+            
+            self.errors.append(total_error)
             epoch_label.config(text=f"Época actual: {epoch}")
-
             plot_decision_boundary()
             root.update()
+            
+            # Criterio de parada: todos los puntos clasificados correctamente
             if total_error == 0:
                 break
-        return errors
 
 
 def load_data():
@@ -92,18 +101,14 @@ def load_data():
     adaline = Adaline(2)
     train_button.config(state=tk.NORMAL)
 
-
 def train_adaline():
     global adaline
     learning_rate = float(learning_rate_entry.get())
     epochs = int(epochs_entry.get())
 
-    adaline = Adaline(2, learning_rate=learning_rate, epochs=epochs)
+    adaline = Adaline(2, learning_rate=learning_rate, epochs=epochs, regularization='L2')
 
     errors = adaline.train(training_data, labels)
-
-    # Plot results or update GUI with training information
-
 
 def plot_data(title, training_inputs, labels):
     ax.clear()
@@ -121,19 +126,24 @@ def plot_data(title, training_inputs, labels):
 
     canvas.draw()
 
-
 def plot_decision_boundary():
     ax.clear()
     ax.grid(True)
-    ax.set_xlim(-1.5, 1.5)
-    ax.set_ylim(-1.5, 1.5)
+    
+    # Definir los límites del área de cálculo
+    xlim_min, xlim_max = -1.5, 1.5
+    ylim_min, ylim_max = -1.5, 1.5
+    
+    ax.set_xlim(xlim_min, xlim_max)
+    ax.set_ylim(ylim_min, ylim_max)
 
     for i, inputs in enumerate(training_data):
         color = 'orange' if labels[i] == 1 else 'blue'
         ax.scatter(inputs[0], inputs[1], c=color)
 
-    x_values = np.linspace(-1.5, 1.5, 100)
-    y_values = np.linspace(-1.5, 1.5, 100)
+    # Crear la malla de puntos para la frontera de decisión dentro de los límites definidos
+    x_values = np.linspace(xlim_min, xlim_max, 100)
+    y_values = np.linspace(ylim_min, ylim_max, 100)
     X, Y = np.meshgrid(x_values, y_values)
     Z = np.zeros_like(X)
 
@@ -142,7 +152,8 @@ def plot_decision_boundary():
             point = np.array([X[i][j], Y[i][j]])
             Z[i][j] = adaline.predict(point)
 
-    ax.contourf(X, Y, Z, levels=[-np.inf, 0, np.inf], colors=('blue', 'orange'), alpha=0.3)
+    # Ajustar el color de la frontera de decisión en función del valor de Z
+    ax.contourf(X, Y, Z, cmap='coolwarm', alpha=0.5)
 
     ax.set_xlabel('Input 1')
     ax.set_ylabel('Input 2')
@@ -158,27 +169,22 @@ def clear_data():
     ax.set_ylim(-1.5, 1.5)
     canvas.draw()
 
-
 def fill_random():
-    pass  # No se implementa en este ejemplo
-
+    pass
 
 def pause_training():
     global paused
-    if paused == False:
+    if paused == False :
         pause_button.config(text="Reanudar")
         paused = True
     else:
         pause_button.config(text="Pausar")
-        paused = False  # Establecer la señal de pausa
+        paused = False
 
-
-# Interfaz
 root = tk.Tk()
-root.title("Red neuronal Unicapa")
+root.title("Adaline")
 root.geometry("1000x550")
 
-# Frame del grid
 grid_frame = tk.Frame(root)
 grid_frame.grid(row=0, column=0, padx=10, pady=10)
 grid_frame.grid_rowconfigure(0, weight=1)
@@ -192,15 +198,12 @@ canvas = FigureCanvasTkAgg(fig, master=grid_frame)
 canvas_widget = canvas.get_tk_widget()
 canvas_widget.grid(row=0, column=0, sticky="nsew")
 
-# Frame de los datos
 data_frame = tk.Frame(root)
 data_frame.grid(row=0, column=1, padx=10, pady=10, sticky="n")
 
-# Frame de los botones
 button_frame = tk.Frame(root)
 button_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
 
-# Botones
 load_button = tk.Button(button_frame, text="Cargar Datos", command=load_data)
 load_button.grid(row=0, column=0, padx=5)
 
@@ -216,7 +219,6 @@ fill_button.grid(row=0, column=3, padx=5)
 pause_button = tk.Button(button_frame, text="Pausar", command=pause_training)
 pause_button.grid(row=0, column=4, padx=5)
 
-# Entradas para la tasa de aprendizaje y las épocas
 learning_rate_label = tk.Label(data_frame, text="Tasa de Aprendizaje:")
 learning_rate_label.grid(row=0, column=0, padx=5, pady=5)
 
@@ -234,7 +236,6 @@ epochs_entry.grid(row=1, column=1, padx=5, pady=5)
 epochs_entry.insert(0, str(200))
 
 epoch_label = tk.Label(data_frame, text="Época actual: 0")
-epoch_label.grid(row=3, column=0, columnspan=2, padx=5, pady=5)
+epoch_label.grid(row=2, column=0, columnspan=2, padx=5, pady=5)
 
 root.mainloop()
-
