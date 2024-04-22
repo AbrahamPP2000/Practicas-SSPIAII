@@ -26,6 +26,9 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import tkinter as tk
 from tkinter import filedialog
 
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+
 paused = False
 
 
@@ -80,6 +83,30 @@ class Adaline:
         return errors
 
 
+def train_adaline():
+    global adaline
+    learning_rate = float(learning_rate_entry.get())
+    epochs = int(epochs_entry.get())
+
+    adaline = Adaline(2, learning_rate=learning_rate, epochs=epochs)
+
+    errors = adaline.train(training_data, labels)
+
+    # Obtener predicciones finales
+    predictions = [1 if adaline.predict(inputs) > 0 else 0 for inputs in training_data]
+    # Calcular matriz de confusión
+    cm = confusion_matrix(labels, predictions)
+    print("Matriz de Confusión:")
+    print(cm)
+    # Visualizar la matriz de confusión
+    plt.figure(figsize=(8, 6))
+    sns.heatmap(cm, annot=True, cmap='Blues', fmt='g', xticklabels=['0', '1'], yticklabels=['0', '1'])
+    plt.xlabel('Predicción')
+    plt.ylabel('Valor Real')
+    plt.title('Matriz de Confusión')
+    plt.show()
+
+
 def load_data():
     global training_data, labels, title, adaline
     filename = filedialog.askopenfilename(filetypes=[("Text files", "*.txt"), ("All files", "*.*")])
@@ -93,14 +120,16 @@ def load_data():
     train_button.config(state=tk.NORMAL)
 
 
-def train_adaline():
-    global adaline
-    learning_rate = float(learning_rate_entry.get())
-    epochs = int(epochs_entry.get())
+# def train_adaline():
+#     global adaline
+#     learning_rate = float(learning_rate_entry.get())
+#     epochs = int(epochs_entry.get())
+#
+#     adaline = Adaline(2, learning_rate=learning_rate, epochs=epochs)
+#
+#     errors = adaline.train(training_data, labels)
 
-    adaline = Adaline(2, learning_rate=learning_rate, epochs=epochs)
-
-    errors = adaline.train(training_data, labels)
+    # train_adaline_confusion_matrix()
 
     # Plot results or update GUI with training information
 
