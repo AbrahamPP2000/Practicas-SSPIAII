@@ -60,6 +60,7 @@ class Adaline:
         self.hidden_outputs = self.tanh(hidden_input)
         output = np.dot(self.hidden_outputs, self.weights_hidden_output) + self.bias_output
         return 1 if output >= 1 else 0  # Devolver 1 si la salida es mayor que 0, de lo contrario, devolver 0
+    
 
     def train(self, training_inputs, labels):
         for epoch in range(1, self.epochs + 1):
