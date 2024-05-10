@@ -2,14 +2,14 @@
 # Cada correo se vectoriza. Con los correos se creará el dataset. Los vectores serán grandes porque pueden haber muchas palabras diferentes.
 # Hay dos zips: uno con correos de SPAM y otro con correos normales. Con esos datos el programa se entrenará.
 # Dependiendo de qué tan preciso se clasifiquen los correos, se establecerá la calificación.
-#
+
 # Bolsa de palabras:
 # Se deben tener los datos,
 # Se escoge el modelo,
 # Inicia la fase de desarrollo (se definen los parámetros y se hacen las pruebas pertinentes),
 # Producción (filtro de SPAM completado),
 # Mantenimiento (se hacen tareas de actualización de la aplicación para adecuarlo a las necesidades actuales)
-#
+
 # Es recomendable que los valores de entrada estén entre 0 y 1.
 #
 # Saturación de pesos: si conforme ocurre el entrenamiento los valores de los pesos aumentan demasiado. Para solucionar esto se usa la normalización de los datos de entrada. Se intenta tener todo en un rango fijo.
